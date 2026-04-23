@@ -19,7 +19,10 @@ WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/shared ./shared
 COPY --from=build /app/frontend ./frontend
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
 WORKDIR /app/frontend
 ENV PORT=10000
+ENV HOSTNAME=0.0.0.0
 EXPOSE 10000
-CMD ["pnpm", "start", "--", "--port", "10000"]
+CMD ["npx", "next", "start", "-p", "10000"]
