@@ -1,0 +1,16 @@
+{
+  "name": "3waymatch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-Powered 3-Way Matching System (PO vs DO vs Invoice)",
+  "scripts": {
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "dev": "pnpm run dev:backend & pnpm run dev:frontend",
+    "build": "pnpm --filter shared build && pnpm --filter backend build && pnpm --filter frontend build",
+    "lint": "pnpm -r lint"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
