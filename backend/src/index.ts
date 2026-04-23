@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
+import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
 import { config } from './config';
 import { errorHandler } from './middleware/errorHandler';
@@ -29,6 +30,30 @@ app.use('/uploads', express.static(config.uploadDir));
 // Health check
 app.get('/api/v1/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Temp seed endpoint (remove after initial deploy)
+app.post('/api/v1/seed', async (_req, res) => {
+  try {
+    const hashedPassword = await bcrypt.hash('Admin1234', 10);
+    await prisma.user.upsert({
+      where: { email: 'admin@3waymatch.com' },
+      update: {},
+      create: { email: 'admin@3waymatch.com', password: hashedPassword, name: 'Admin', isAdmin: true },
+    });
+    await prisma.toleranceConfig.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: {
+        id: 'default', name: 'Default', isDefault: true,
+        priceTolerancePct: 3.0, qtyTolerancePct: 5.0, taxTolerancePct: 1.0,
+        amountToleranceAbs: 5.0, autoApproveThreshold: 0.95, reviewThreshold: 0.70,
+      },
+    });
+    res.json({ success: true, message: 'Seeded admin user + default tolerance config' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Routes

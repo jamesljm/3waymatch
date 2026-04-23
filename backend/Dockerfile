@@ -20,6 +20,9 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/shared ./shared
 COPY --from=build /app/backend ./backend
 WORKDIR /app/backend
+COPY --from=build /app/backend/node_modules ./node_modules
 ENV PORT=10000
 EXPOSE 10000
-CMD ["node", "dist/index.js"]
+COPY backend/entrypoint.sh /app/backend/entrypoint.sh
+RUN chmod +x /app/backend/entrypoint.sh
+CMD ["/app/backend/entrypoint.sh"]
