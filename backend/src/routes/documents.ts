@@ -27,6 +27,36 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
+// Queue stats
+router.get('/queue/stats', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const stats = await documentService.getQueueStats();
+    res.json({ success: true, data: stats });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Job processing status for a document
+router.get('/:id/job-status', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const status = await documentService.getJobStatus(req.params.id as string);
+    res.json({ success: true, data: status });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Re-trigger processing
+router.post('/:id/reprocess', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await documentService.reprocessDocument(req.params.id as string);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Get single document detail
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {

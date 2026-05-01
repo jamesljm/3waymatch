@@ -2,6 +2,10 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../index';
 import { getPagination, paginatedResult } from '../utils/pagination';
 import { Request } from 'express';
+import { config } from '../config';
+import { enqueueDocument, getDocumentQueue } from '../queues/documentQueue';
+
+const JsonNull = Prisma.JsonNull;
 
 export async function listDocuments(req: Request) {
   const pagination = getPagination(req);
@@ -188,8 +192,78 @@ export async function uploadDocuments(files: Express.Multer.File[]) {
       },
     });
     docs.push(doc);
+
+    // Enqueue for processing if Redis + Gemini configured
+    if (config.redisUrl && config.geminiApiKey) {
+      try {
+        await enqueueDocument({
+          documentId: doc.id,
+          filePath: file.path,
+          originalFileName: file.originalname,
+        });
+      } catch (err: any) {
+        console.error(`Failed to enqueue document ${doc.id}:`, err.message);
+      }
+    }
   }
   return docs;
+}
+
+export async function reprocessDocument(id: string) {
+  const doc = await prisma.document.findUniqueOrThrow({ where: { id } });
+
+  // Reset status
+  await prisma.document.update({
+    where: { id },
+    data: {
+      status: 'UPLOADED',
+      extractedData: JsonNull,
+      extractionConfidence: null,
+      rawOcrText: null,
+    },
+  });
+
+  // Remove old job if exists, then enqueue
+  const queue = getDocumentQueue();
+  const oldJob = await queue.getJob(`doc-${id}`);
+  if (oldJob) await oldJob.remove();
+
+  const jobId = await enqueueDocument({
+    documentId: id,
+    filePath: doc.filePath,
+    originalFileName: doc.originalFileName,
+  });
+
+  return { documentId: id, jobId, status: 'UPLOADED' };
+}
+
+export async function getJobStatus(documentId: string) {
+  const queue = getDocumentQueue();
+  const job = await queue.getJob(`doc-${documentId}`);
+  if (!job) return { status: 'not_found' };
+
+  const state = await job.getState();
+  return {
+    jobId: job.id,
+    status: state,
+    progress: job.progress,
+    attemptsMade: job.attemptsMade,
+    failedReason: job.failedReason || null,
+    processedOn: job.processedOn,
+    finishedOn: job.finishedOn,
+  };
+}
+
+export async function getQueueStats() {
+  const queue = getDocumentQueue();
+  const [waiting, active, completed, failed, delayed] = await Promise.all([
+    queue.getWaitingCount(),
+    queue.getActiveCount(),
+    queue.getCompletedCount(),
+    queue.getFailedCount(),
+    queue.getDelayedCount(),
+  ]);
+  return { waiting, active, completed, failed, delayed };
 }
 
 export async function getDashboardStats() {
