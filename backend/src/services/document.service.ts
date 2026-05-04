@@ -255,15 +255,22 @@ export async function getJobStatus(documentId: string) {
 }
 
 export async function getQueueStats() {
+  if (!config.redisUrl) {
+    return { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0, workerEnabled: false };
+  }
   const queue = getDocumentQueue();
-  const [waiting, active, completed, failed, delayed] = await Promise.all([
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Queue stats timeout')), 5000),
+  );
+  const stats = Promise.all([
     queue.getWaitingCount(),
     queue.getActiveCount(),
     queue.getCompletedCount(),
     queue.getFailedCount(),
     queue.getDelayedCount(),
   ]);
-  return { waiting, active, completed, failed, delayed };
+  const [waiting, active, completed, failed, delayed] = (await Promise.race([stats, timeout])) as number[];
+  return { waiting, active, completed, failed, delayed, workerEnabled: true };
 }
 
 export async function getDashboardStats() {

@@ -2,7 +2,7 @@ import { Worker, Job } from 'bullmq';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../index';
 import { config } from '../config';
-import { QUEUE_NAME, getRedisConnection, DocumentJobData, ProcessingStage } from '../queues/documentQueue';
+import { QUEUE_NAME, getWorkerConnection, DocumentJobData, ProcessingStage } from '../queues/documentQueue';
 import { classifyDocument, extractDocument } from '../services/gemini.service';
 import { resolveVendor, resolveItem } from '../services/entityResolution.service';
 
@@ -138,7 +138,7 @@ export function startDocumentWorker(): Worker<DocumentJobData> {
       }
     },
     {
-      connection: getRedisConnection(),
+      connection: getWorkerConnection(),
       concurrency: config.workerConcurrency,
     },
   );

@@ -16,13 +16,20 @@ export interface DocumentJobData {
   attempt?: number;
 }
 
-let connection: IORedis | null = null;
+function createRedisConnection(): IORedis {
+  const conn = new IORedis(config.redisUrl, {
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+  });
+  conn.on('error', (err) => {
+    console.error('[Redis] Connection error:', err.message);
+  });
+  return conn;
+}
 
-export function getRedisConnection(): IORedis {
-  if (!connection) {
-    connection = new IORedis(config.redisUrl, { maxRetriesPerRequest: null });
-  }
-  return connection;
+// BullMQ requires separate connections for Queue and Worker
+export function getWorkerConnection(): IORedis {
+  return createRedisConnection();
 }
 
 export const QUEUE_NAME = 'document-processing';
@@ -32,7 +39,7 @@ let queue: Queue<DocumentJobData> | null = null;
 export function getDocumentQueue(): Queue<DocumentJobData> {
   if (!queue) {
     queue = new Queue<DocumentJobData>(QUEUE_NAME, {
-      connection: getRedisConnection(),
+      connection: createRedisConnection(),
       defaultJobOptions: {
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },
