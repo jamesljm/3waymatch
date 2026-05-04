@@ -8,8 +8,6 @@ export const config = {
   corsOrigins: process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(',')
     : ['http://localhost:3000'],
-  redisUrl: process.env.REDIS_URL || '',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   geminiModel: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
-  workerConcurrency: parseInt(process.env.WORKER_CONCURRENCY || '2', 10),
 };

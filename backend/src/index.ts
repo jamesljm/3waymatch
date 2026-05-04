@@ -11,7 +11,6 @@ import vendorsRouter from './routes/vendors';
 import inventoryItemsRouter from './routes/inventoryItems';
 import documentsRouter from './routes/documents';
 import settingsRouter from './routes/settings';
-import { startDocumentWorker, getWorker } from './workers/documentWorker';
 
 export const prisma = new PrismaClient();
 
@@ -76,24 +75,12 @@ prisma
   .$connect()
   .then(() => {
     console.log('Database connected');
-
-    // Start document processing worker if Redis + Gemini configured
-    if (config.redisUrl && config.geminiApiKey) {
-      startDocumentWorker();
-    } else {
-      console.log('[Worker] Skipped: REDIS_URL or GEMINI_API_KEY not set');
-    }
   })
   .catch((err) => console.error('Database connection failed:', err));
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down...');
-  const worker = getWorker();
-  if (worker) {
-    console.log('[Worker] Closing worker...');
-    await worker.close();
-  }
   server.close();
   await prisma.$disconnect();
   process.exit(0);
